@@ -1,4 +1,4 @@
-package com.example.StreamDSL
+package com.example.streamDSL
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
