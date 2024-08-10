@@ -1,6 +1,5 @@
 package com.example.streamDSL
 
-import com.example.streamDSL.config.KafkaTopics
 import com.streamdsl.avro.AdditionalData
 import com.streamdsl.avro.JoinedData
 import com.streamdsl.avro.MainData

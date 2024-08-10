@@ -6,6 +6,7 @@ import com.streamdsl.avro.JoinedData
 import com.streamdsl.avro.MainData
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
+import org.apache.kafka.streams.Topology
 import org.apache.kafka.streams.kstream.*
 import java.util.*
 
@@ -15,7 +16,7 @@ class Pipeline(
     private val streamConfig: Properties
 ) {
 
-    fun buildStream(){
+    fun buildStream(): Topology =
         streamsBuilder.apply {
             stream(
                 kafkaTopics.mainData,
@@ -25,20 +26,25 @@ class Pipeline(
                 .leftJoin(
                     readAdditionalData(),
                     dataJoiner(),
-                    Materialized.with(Serdes.String(), SerdesUtil.getSerde<JoinedData>(streamConfig))
+                    Joined.with(
+                        Serdes.String(),
+                        SerdesUtil.getSerde<JoinedData>(streamConfig),
+                        SerdesUtil.getSerde<AdditionalData>(streamConfig)
+                    )
                 )
-                .toStream()
                 .sendInterestingData()
-        }
-    }
+        }.build()
+
 
     private fun KStream<String, MainData>.changeKeyAndMapToJoinedData() =
-        groupBy { _, value ->  value.referenceData }
-        .aggregate(
-            { JoinedData() },
-            { _, value, _ -> JoinedData(value.mainField, "", value.referenceData) },
-            Materialized.with(Serdes.String(), SerdesUtil.getSerde<JoinedData>(streamConfig))
-        )
+        selectKey { _, value -> value.referenceData }
+        .mapValues { _, value ->
+            JoinedData(
+                value.mainField,
+                "",
+                value.referenceData
+            )
+        }
 
     private fun KStream<String, JoinedData>.sendInterestingData() =
         filter { _, value -> value.mainField != "boring_data" }
@@ -58,5 +64,5 @@ class Pipeline(
             Consumed.with(Serdes.String(), SerdesUtil.getSerde<AdditionalData>(streamConfig))
         )
             .selectKey { _, value -> value.referenceData }
-            .toTable()
+            .toTable(Materialized.with(Serdes.String(), SerdesUtil.getSerde<AdditionalData>(streamConfig)))
 }
