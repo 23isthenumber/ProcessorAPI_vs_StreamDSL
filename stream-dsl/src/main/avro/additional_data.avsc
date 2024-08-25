@@ -1,0 +1,15 @@
+{
+    "namespace": "com.stream_dsl.avro",
+    "name": "AdditionalData",
+    "type": "record",
+    "fields": [
+                {
+                    "name": "additionalField",
+                    "type": "string"
+                },
+                {
+                    "name": "referenceData",
+                    "type": "string"
+                }
+              ]
+}
