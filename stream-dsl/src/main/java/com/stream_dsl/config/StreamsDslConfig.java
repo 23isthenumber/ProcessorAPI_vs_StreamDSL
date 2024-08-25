@@ -1,5 +1,6 @@
 package com.stream_dsl.config;
 
+import com.stream_dsl.Pipeline;
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import org.apache.kafka.streams.KafkaStreams;

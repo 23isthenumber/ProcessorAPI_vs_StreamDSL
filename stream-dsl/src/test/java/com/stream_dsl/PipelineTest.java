@@ -4,7 +4,6 @@ import com.stream_dsl.avro.AdditionalData;
 import com.stream_dsl.avro.JoinedData;
 import com.stream_dsl.avro.MainData;
 import com.stream_dsl.config.KafkaTopics;
-import com.stream_dsl.config.Pipeline;
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import org.apache.kafka.common.serialization.StringDeserializer;

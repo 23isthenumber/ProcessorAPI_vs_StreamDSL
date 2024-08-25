@@ -1,9 +1,9 @@
-package com.stream_dsl.config;
+package com.stream_dsl;
 
-import com.stream_dsl.SerdesUtil;
 import com.stream_dsl.avro.AdditionalData;
 import com.stream_dsl.avro.JoinedData;
 import com.stream_dsl.avro.MainData;
+import com.stream_dsl.config.KafkaTopics;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
