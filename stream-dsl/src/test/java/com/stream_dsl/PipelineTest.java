@@ -18,6 +18,9 @@ import org.mockito.Mockito;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -35,11 +38,11 @@ public class PipelineTest {
     @BeforeEach
     public void setUp() {
         final KafkaTopics kafkaTopics = Mockito.mock(KafkaTopics.class);
-        mockKafkaTopics(kafkaTopics);
+        mockKafkaTopics.accept(kafkaTopics);
         final StreamsBuilder streamBuilder = new StreamsBuilder();
-        final Properties props = generateProperties();
+        final Properties props = generateProperties.get();
         setUpPipeline(kafkaTopics, streamBuilder, props);
-        setUpTopologyTestDriver(streamBuilder, props);
+        setUpTopologyTestDriver.accept(streamBuilder, props);
     }
 
     @AfterEach
@@ -134,7 +137,7 @@ public class PipelineTest {
         assertEquals(1, actual.size());
     }
 
-    private  Properties generateProperties() {
+    private final Supplier<Properties> generateProperties = () -> {
         Properties properties = new Properties();
         properties.putAll(
                 Map.of(
@@ -146,29 +149,35 @@ public class PipelineTest {
                 )
         );
         return properties;
-    }
+    };
 
-    private void setUpTopologyTestDriver(StreamsBuilder streamBuilder, Properties props) {
+    private final BiConsumer<StreamsBuilder, Properties> setUpTopologyTestDriver = (streamBuilder, props) -> {
         topologyTestDriver = new TopologyTestDriver(streamBuilder.build(), props);
         mainDataTopic = topologyTestDriver.createInputTopic(
-                PipelineTest.MAIN_DATA_TOPIC, new StringSerializer(), SerdesUtil.MainDataSerde(props).serializer()
+                PipelineTest.MAIN_DATA_TOPIC, new StringSerializer(), SerdesUtil.MainDataSerde
+                        .apply(props)
+                        .serializer()
         );
         additionalDataTopic = topologyTestDriver.createInputTopic(
-                PipelineTest.ADDITIONAL_DATA_TOPIC, new StringSerializer(), SerdesUtil.AdditionalDataSerde(props).serializer()
+                PipelineTest.ADDITIONAL_DATA_TOPIC, new StringSerializer(), SerdesUtil.AdditionalDataSerde
+                        .apply(props)
+                        .serializer()
         );
         outputTopic = topologyTestDriver.createOutputTopic(
-                PipelineTest.OUTPUT_TOPIC, new StringDeserializer(), SerdesUtil.JoinedDataSerde(props).deserializer()
+                PipelineTest.OUTPUT_TOPIC, new StringDeserializer(), SerdesUtil.JoinedDataSerde
+                        .apply(props)
+                        .deserializer()
         );
-    }
+    };
 
     private static void setUpPipeline(KafkaTopics kafkaTopics, StreamsBuilder streamBuilder, Properties props) {
         final Pipeline pipeline = new Pipeline(kafkaTopics, streamBuilder, props);
         pipeline.buildStream();
     }
 
-    private static void mockKafkaTopics(KafkaTopics kafkaTopics) {
+    private static final Consumer<KafkaTopics> mockKafkaTopics = kafkaTopics -> {
         Mockito.when(kafkaTopics.mainData()).thenReturn(PipelineTest.MAIN_DATA_TOPIC);
         Mockito.when(kafkaTopics.additionalData()).thenReturn(PipelineTest.ADDITIONAL_DATA_TOPIC);
         Mockito.when(kafkaTopics.output()).thenReturn(PipelineTest.OUTPUT_TOPIC);
-    }
+    };
 }

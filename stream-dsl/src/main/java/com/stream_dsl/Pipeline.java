@@ -8,14 +8,17 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
-
 import java.util.Properties;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class Pipeline {
 
-    private final KafkaTopics kafkaTopics;
-    private final StreamsBuilder streamsBuilder;
-    private final Properties streamConfig;
+    private KafkaTopics kafkaTopics;
+    private StreamsBuilder streamsBuilder;
+    private Properties streamConfig;
 
     public Pipeline(KafkaTopics kafkaTopics, StreamsBuilder streamsBuilder, Properties streamConfig) {
         this.kafkaTopics = kafkaTopics;
@@ -24,74 +27,65 @@ public class Pipeline {
     }
 
     public Topology buildStream() {
-        final KStream<String, MainData> mainDataStream = getMainDataStream();
-
-        final KTable<String, AdditionalData> additionalDataTable = getAdditionalDataTable();
-
-        final KStream<String, JoinedData> mainDataMapToJoinedData = mapMainDoJoinedModel(mainDataStream);
-
-        final KStream<String, JoinedData> joinedWithAdditionalData = joinMainWithAdditionalData(
-                mainDataMapToJoinedData, additionalDataTable
+        sendInterestingDataToOutput.accept(
+                joinMainWithAdditionalData.apply(
+                        mapMainDoJoinedModel.apply(getMainDataStream.get()), getAdditionalDataTable.get()
+                )
         );
-
-        sendInterestingDataToOutput(joinedWithAdditionalData);
-
         return streamsBuilder.build();
     }
 
-    private void sendInterestingDataToOutput(KStream<String, JoinedData> joinedWithAdditionalData) {
-        joinedWithAdditionalData
-                .filter((_, v) -> !"boring_data".equals(v.getMainField()))
-                .to(
-                        kafkaTopics.output(),
-                        Produced.with(Serdes.String(), SerdesUtil.JoinedDataSerde(streamConfig))
-                );
-    }
+    private final Consumer<KStream<String, JoinedData>> sendInterestingDataToOutput =
+            joinedWithAdditionalData ->
+                    joinedWithAdditionalData
+                            .filter((_, v) -> !"boring_data".equals(v.getMainField()))
+                            .to(
+                                    kafkaTopics.output(),
+                                    Produced.with(Serdes.String(), SerdesUtil.JoinedDataSerde.apply(streamConfig))
+                            );
 
-    private KStream<String, JoinedData> joinMainWithAdditionalData(KStream<String, JoinedData> mainDataMapToJoinedData, KTable<String, AdditionalData> additionalDataTable) {
-        return mainDataMapToJoinedData
-                .leftJoin(
-                        additionalDataTable,
-                        getJoinedDataAdditionalDataJoinedDataValueJoiner(),
-                        configureSerde()
-                );
-    }
+    private final BiFunction<KStream<String, JoinedData>, KTable<String, AdditionalData>, KStream<String, JoinedData>>
+            joinMainWithAdditionalData = (mainDataMapToJoinedData, additionalDataTable) ->
+            mainDataMapToJoinedData
+                    .leftJoin(
+                            additionalDataTable,
+                            getJoinedDataAdditionalDataJoinedDataValueJoiner(),
+                            configureSerde()
+                    );
 
-    private static KStream<String, JoinedData> mapMainDoJoinedModel(KStream<String, MainData> mainDataStream) {
-        return mainDataStream
-                .mapValues((_, v) ->
-                        new JoinedData(
-                                v.getMainField(),
-                                "",
-                                v.getReferenceData()
-                        )
-                );
-    }
+    private final Function<KStream<String, MainData>, KStream<String, JoinedData>> mapMainDoJoinedModel =
+            mainDataStream ->
+                    mainDataStream
+                            .mapValues((_, v) ->
+                                    new JoinedData(
+                                            v.getMainField(),
+                                            "",
+                                            v.getReferenceData()
+                                    )
+                            );
 
-    private KTable<String, AdditionalData> getAdditionalDataTable() {
-        return streamsBuilder
-                .stream(
-                        kafkaTopics.additionalData(),
-                        Consumed.with(Serdes.String(), SerdesUtil.AdditionalDataSerde(streamConfig))
-                )
-                .selectKey((_, v) -> v.getReferenceData())
-                .toTable(Materialized.with(Serdes.String(), SerdesUtil.AdditionalDataSerde(streamConfig)));
-    }
+    private final Supplier<KTable<String, AdditionalData>> getAdditionalDataTable = () ->
+            streamsBuilder
+                    .stream(
+                            kafkaTopics.additionalData(),
+                            Consumed.with(Serdes.String(), SerdesUtil.AdditionalDataSerde.apply(streamConfig))
+                    )
+                    .selectKey((_, v) -> v.getReferenceData())
+                    .toTable(Materialized.with(Serdes.String(), SerdesUtil.AdditionalDataSerde.apply(streamConfig)));
 
-    private KStream<String, MainData> getMainDataStream() {
-        return streamsBuilder
+    private final Supplier<KStream<String, MainData>> getMainDataStream = () ->
+         streamsBuilder
                 .stream(
                         kafkaTopics.mainData(),
-                        Consumed.with(Serdes.String(), SerdesUtil.MainDataSerde(streamConfig))
+                        Consumed.with(Serdes.String(), SerdesUtil.MainDataSerde.apply(streamConfig))
                 )
                 .selectKey((_, v) -> v.getReferenceData());
-    }
 
     private Joined<String, JoinedData, AdditionalData> configureSerde() {
         return Joined.with(
                 Serdes.String(),
-                SerdesUtil.JoinedDataSerde(streamConfig),
-                SerdesUtil.AdditionalDataSerde(streamConfig)
+                SerdesUtil.JoinedDataSerde.apply(streamConfig),
+                SerdesUtil.AdditionalDataSerde.apply(streamConfig)
         );
     }
 

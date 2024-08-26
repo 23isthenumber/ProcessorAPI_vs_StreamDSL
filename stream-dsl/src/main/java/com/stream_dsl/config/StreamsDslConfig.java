@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import java.util.Map;
 import java.util.Properties;
-
 import static org.apache.kafka.streams.StreamsConfig.*;
 
 @Configuration
