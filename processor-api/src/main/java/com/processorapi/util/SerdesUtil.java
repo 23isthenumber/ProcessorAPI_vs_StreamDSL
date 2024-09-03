@@ -1,0 +1,48 @@
+package com.processorapi.util;
+
+import com.processorapi.avro.AdditionalData;
+import com.processorapi.avro.JoinedData;
+import com.processorapi.avro.MainData;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
+import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
+import org.apache.kafka.common.serialization.Serde;
+import java.util.Collections;
+import java.util.Properties;
+import java.util.function.Function;
+
+public class SerdesUtil {
+
+    public static Function<Properties, Serde<MainData>> MainDataSerde =
+            config -> {
+                Serde<MainData> serde = new SpecificAvroSerde<>();
+                serde.configure(
+                        Collections.singletonMap(
+                                AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG,
+                                config.getProperty(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG)
+                        ), false
+                );
+                return serde;
+            };
+
+    public static Function<Properties, Serde<AdditionalData>> AdditionalDataSerde = config -> {
+        Serde<AdditionalData> serde = new SpecificAvroSerde<>();
+        serde.configure(
+                Collections.singletonMap(
+                        AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG,
+                        config.getProperty(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG)
+                ), false
+        );
+        return serde;
+    };
+
+    public static Function<Properties, Serde<JoinedData>> JoinedDataSerde = config -> {
+        Serde<JoinedData> serde = new SpecificAvroSerde<>();
+        serde.configure(
+                Collections.singletonMap(
+                        AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG,
+                        config.getProperty(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG)
+                ), false
+        );
+        return serde;
+    };
+}
