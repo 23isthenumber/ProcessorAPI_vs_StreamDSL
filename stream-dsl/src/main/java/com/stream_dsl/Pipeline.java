@@ -16,6 +16,7 @@ import java.util.function.Supplier;
 
 public class Pipeline {
 
+    public static final String BORING_DATA = "boring_data";
     private KafkaTopics kafkaTopics;
     private StreamsBuilder streamsBuilder;
     private Properties streamConfig;
@@ -38,7 +39,7 @@ public class Pipeline {
     private final Consumer<KStream<String, JoinedData>> sendInterestingDataToOutput =
             joinedWithAdditionalData ->
                     joinedWithAdditionalData
-                            .filter((_, v) -> !"boring_data".equals(v.getMainField()))
+                            .filter((_, v) -> !BORING_DATA.equals(v.getMainField()))
                             .to(
                                     kafkaTopics.output(),
                                     Produced.with(Serdes.String(), SerdesUtil.JoinedDataSerde.apply(streamConfig))
