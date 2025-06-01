@@ -28,18 +28,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 		classes = TestConfig.class
 )
 @EmbeddedKafka(
-		partitions = 4,
+		partitions = 1,
 		topics = {
 				("${topic.mainData}"),
 				("${topic.additionalData}"),
 				("${topic.output}")
 		},
-		bootstrapServersProperty = "spring.embedded.kafka.brokers",
-		brokerProperties = {
-				"transaction.state.log.replication.factor=1",
-				"transaction.state.log.min.isr=1",
-				"offsets.topic.replication.factor=1"
-		}
+		bootstrapServersProperty = "spring.embedded.kafka.brokers"
 )
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PipelineIT {
@@ -153,7 +148,6 @@ class PipelineIT {
 	}
 
 	private void sendMainDataToTopic(String topic, String key, MainData value) throws InterruptedException, ExecutionException {
-		mainDataProducer.beginTransaction();
 		mainDataProducer.send(
 				new ProducerRecord<>(
 						topic,
@@ -161,11 +155,9 @@ class PipelineIT {
 						value
 				)
 		).get();
-		mainDataProducer.commitTransaction();
 	}
 
 	private void sendAdditionalDataToTopic(String topic, String key, AdditionalData value) throws InterruptedException, ExecutionException {
-		additionalDataProducer.beginTransaction();
 		additionalDataProducer.send(
 				new ProducerRecord<>(
 						topic,
@@ -173,6 +165,5 @@ class PipelineIT {
 						value
 				)
 		).get();
-		additionalDataProducer.commitTransaction();
 	}
 }

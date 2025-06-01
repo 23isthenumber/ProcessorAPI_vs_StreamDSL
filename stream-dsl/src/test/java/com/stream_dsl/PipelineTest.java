@@ -148,8 +148,7 @@ public class PipelineTest {
                         StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, String.class,
                         StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class,
                         AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://test",
-                        DEFAULT_PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, CustomProduceHandler.class,
-                        PROCESSING_GUARANTEE_CONFIG, EXACTLY_ONCE_V2
+                        DEFAULT_PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, CustomProduceHandler.class
                 )
         );
         return properties;

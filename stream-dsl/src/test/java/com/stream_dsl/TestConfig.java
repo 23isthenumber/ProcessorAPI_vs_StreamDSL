@@ -48,9 +48,7 @@ public class TestConfig {
                         ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
                         ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class,
                         AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG,
-                        streamConfig.get(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG),
-                        ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true",
-                        ProducerConfig.ACKS_CONFIG, "all"
+                        streamConfig.get(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG)
                 )
         );
         return properties;
@@ -61,28 +59,18 @@ public class TestConfig {
         config.put(
                 ConsumerConfig.GROUP_ID_CONFIG, "outputConsumerGroup"
         );
-        config.put(
-                ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false"
-        );
-        config.put(
-                ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed"
-        );
         return new KafkaConsumer<>(config);
     }
 
     @Bean
     public KafkaProducer<String, MainData> mainDataProducer(Properties producerConfig){
-        producerConfig.setProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "transactional-id-1");
         KafkaProducer<String, MainData> producer = new KafkaProducer<>(producerConfig);
-        producer.initTransactions();
         return producer;
     }
 
     @Bean
     public KafkaProducer<String, AdditionalData> additionalDataProducerProperties(Properties producerConfig){
-        producerConfig.setProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "transactional-id-2");
         KafkaProducer<String, AdditionalData> producer = new KafkaProducer<>(producerConfig);
-        producer.initTransactions();
         return producer;
     }
 }
