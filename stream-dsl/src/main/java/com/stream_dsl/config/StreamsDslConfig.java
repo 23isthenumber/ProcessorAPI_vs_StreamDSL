@@ -33,9 +33,9 @@ public class StreamsDslConfig {
                         BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress,
                         DEFAULT_KEY_SERDE_CLASS_CONFIG, String.class,
                         DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class,
-                        AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl
-             //           DEFAULT_PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, CustomProduceHandler.class
-            // --->           DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class
+                        AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl,
+                        DEFAULT_PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, CustomProduceHandler.class,
+                        PROCESSING_GUARANTEE_CONFIG, EXACTLY_ONCE_V2
                 )
         );
         return properties;

@@ -14,11 +14,13 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+
 import java.time.Duration;
 import java.util.Collections;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -26,13 +28,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 		classes = TestConfig.class
 )
 @EmbeddedKafka(
-		partitions = 1,
+		partitions = 4,
 		topics = {
 				("${topic.mainData}"),
 				("${topic.additionalData}"),
 				("${topic.output}")
 		},
-		bootstrapServersProperty = "spring.embedded.kafka.brokers"
+		bootstrapServersProperty = "spring.embedded.kafka.brokers",
+		brokerProperties = {
+				"transaction.state.log.replication.factor=1",
+				"transaction.state.log.min.isr=1",
+				"offsets.topic.replication.factor=1"
+		}
 )
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PipelineIT {
@@ -79,20 +86,12 @@ class PipelineIT {
 				referenceData
 		);
 		//WHEN
-		additionalDataProducer.send(
-				new ProducerRecord<>(
+		sendAdditionalDataToTopic(
 						topics.additionalData(),
 						additionalData.getReferenceData(),
 						additionalData
-				)
-		).get();
-		mainDataProducer.send(
-				new ProducerRecord<>(
-						topics.mainData(),
-						mainData.getReferenceData(),
-						mainData
-				)
-		).get();
+				);
+		sendMainDataToTopic(topics.mainData(), mainData.getReferenceData(), mainData);
 		//THEN
 		JoinedData actual = outputConsumer.poll(Duration.ofMillis(1000)).iterator().next().value();
 		assertEquals(expected, actual);
@@ -112,20 +111,12 @@ class PipelineIT {
 				referenceData
 		);
 		//WHEN
-		additionalDataProducer.send(
-				new ProducerRecord<>(
+		sendAdditionalDataToTopic(
 						topics.additionalData(),
 						additionalData.getReferenceData(),
 						additionalData
-				)
-		).get();
-		mainDataProducer.send(
-				new ProducerRecord<>(
-						topics.mainData(),
-						mainData.getReferenceData(),
-						mainData
-				)
-		).get();
+				);
+		sendMainDataToTopic(topics.mainData(), mainData.getReferenceData(), mainData);
 		//THEN
 		assertThrows(NoSuchElementException.class, () -> {
 			outputConsumer.poll(Duration.ofMillis(1000)).iterator().next().value();
@@ -149,22 +140,38 @@ class PipelineIT {
 				nextReferenceData
 		);
 		//WHEN
-		additionalDataProducer.send(
-				new ProducerRecord<>(
+		sendAdditionalDataToTopic(
 						topics.additionalData(),
 						nextAdditionalData.getReferenceData(),
 						nextAdditionalData
-				)
-		).get();
-		mainDataProducer.send(
-				new ProducerRecord<>(
-						topics.mainData(),
-						nextMainData.getReferenceData(),
-						nextMainData
-				)
-		).get();
+				);
+		sendMainDataToTopic(topics.mainData(), nextMainData.getReferenceData(), nextMainData);
 
 		JoinedData actual = outputConsumer.poll(Duration.ofMillis(1000)).iterator().next().value();
 		assertEquals(expected, actual);
+	}
+
+	private void sendMainDataToTopic(String topic, String key, MainData value) throws InterruptedException, ExecutionException {
+		mainDataProducer.beginTransaction();
+		mainDataProducer.send(
+				new ProducerRecord<>(
+						topic,
+						key,
+						value
+				)
+		).get();
+		mainDataProducer.commitTransaction();
+	}
+
+	private void sendAdditionalDataToTopic(String topic, String key, AdditionalData value) throws InterruptedException, ExecutionException {
+		additionalDataProducer.beginTransaction();
+		additionalDataProducer.send(
+				new ProducerRecord<>(
+						topic,
+						key,
+						value
+				)
+		).get();
+		additionalDataProducer.commitTransaction();
 	}
 }
