@@ -1,6 +1,8 @@
 package com.stream_dsl.config;
 
+import com.stream_dsl.exception.CatchMeIfYouCan;
 import com.stream_dsl.Pipeline;
+import com.stream_dsl.exception.CustomProduceHandler;
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import org.apache.kafka.streams.KafkaStreams;
@@ -32,6 +34,8 @@ public class StreamsDslConfig {
                         DEFAULT_KEY_SERDE_CLASS_CONFIG, String.class,
                         DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class,
                         AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl
+             //           DEFAULT_PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, CustomProduceHandler.class
+            // --->           DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class
                 )
         );
         return properties;
@@ -52,6 +56,7 @@ public class StreamsDslConfig {
     @Bean
     public KafkaStreams kafkaStreams(Pipeline pipeline) {
         KafkaStreams kafkaStream = new KafkaStreams(pipeline.buildStream(), streamConfig());
+        kafkaStream.setUncaughtExceptionHandler(new CatchMeIfYouCan());
         kafkaStream.start();
         return kafkaStream;
     }

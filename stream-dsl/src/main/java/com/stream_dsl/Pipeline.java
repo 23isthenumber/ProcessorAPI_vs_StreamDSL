@@ -80,6 +80,7 @@ public class Pipeline {
                         kafkaTopics.mainData(),
                         Consumed.with(Serdes.String(), SerdesUtil.MainDataSerde.apply(streamConfig))
                 )
+                 .peek((_, v) -> System.out.println("I am being read "+ v))
                 .selectKey((_, v) -> v.getReferenceData());
 
     private Joined<String, JoinedData, AdditionalData> configureSerde() {

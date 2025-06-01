@@ -5,7 +5,7 @@
     "fields": [
                 {
                     "name": "mainField",
-                    "type": "string"
+                    "type": [ "string", "null" ]
                 },
                 {
                     "name": "referenceData",
