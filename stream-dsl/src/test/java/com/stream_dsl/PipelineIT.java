@@ -103,7 +103,7 @@ class PipelineIT {
 		final String additionalDataValue = "additionalData";
 		final String referenceData = "referenceData";
 		final MainData mainData = new MainData(
-				null,
+				"CORRUPTED",
 				referenceData
 		);
 		final AdditionalData additionalData = new AdditionalData(
@@ -118,9 +118,10 @@ class PipelineIT {
 				);
 		sendMainDataToTopic(topics.mainData(), mainData.getReferenceData(), mainData);
 		//THEN
-		assertThrows(NoSuchElementException.class, () -> {
+//		assertThrows(NoSuchElementException.class, () -> {
+		TimeUnit.SECONDS.sleep(15);
 			outputConsumer.poll(Duration.ofMillis(1000)).iterator().next().value();
-		});
+//		});
 		//AND
 		TimeUnit.SECONDS.sleep(5);
 		final String mainDataValue = "mainData";

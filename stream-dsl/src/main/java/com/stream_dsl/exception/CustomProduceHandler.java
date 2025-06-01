@@ -8,6 +8,7 @@ import java.util.Map;
 public class CustomProduceHandler implements ProductionExceptionHandler {
     @Override
     public ProductionExceptionHandlerResponse handle(ProducerRecord<byte[], byte[]> record, Exception exception) {
+        System.out.println("I am handling things "+ exception.getMessage());
         return ProductionExceptionHandlerResponse.CONTINUE;
     }
 

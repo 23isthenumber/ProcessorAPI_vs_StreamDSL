@@ -4,6 +4,7 @@ import com.stream_dsl.avro.AdditionalData;
 import com.stream_dsl.avro.JoinedData;
 import com.stream_dsl.avro.MainData;
 import com.stream_dsl.config.KafkaTopics;
+import com.stream_dsl.exception.CustomProduceHandler;
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -22,6 +23,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import static org.apache.kafka.streams.StreamsConfig.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -145,7 +147,9 @@ public class PipelineTest {
                         StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9090",
                         StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, String.class,
                         StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class,
-                        AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://test"
+                        AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://test",
+                        DEFAULT_PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, CustomProduceHandler.class,
+                        PROCESSING_GUARANTEE_CONFIG, EXACTLY_ONCE_V2
                 )
         );
         return properties;

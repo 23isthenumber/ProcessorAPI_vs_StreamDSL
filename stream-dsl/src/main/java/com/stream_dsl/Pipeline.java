@@ -8,6 +8,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
+
 import java.util.Properties;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -40,6 +41,10 @@ public class Pipeline {
             joinedWithAdditionalData ->
                     joinedWithAdditionalData
                             .filter((_, v) -> !BORING_DATA.equals(v.getMainField()))
+                            .mapValues(v -> {
+                                if (v.getMainField().equals("CORRUPTED")) v.setMainField("A".repeat(1048576));
+                                return v;
+                            })
                             .to(
                                     kafkaTopics.output(),
                                     Produced.with(Serdes.String(), SerdesUtil.JoinedDataSerde.apply(streamConfig))

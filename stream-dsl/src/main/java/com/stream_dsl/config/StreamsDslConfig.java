@@ -56,7 +56,7 @@ public class StreamsDslConfig {
     @Bean
     public KafkaStreams kafkaStreams(Pipeline pipeline) {
         KafkaStreams kafkaStream = new KafkaStreams(pipeline.buildStream(), streamConfig());
-        kafkaStream.setUncaughtExceptionHandler(new CatchMeIfYouCan());
+//        kafkaStream.setUncaughtExceptionHandler(new CatchMeIfYouCan());
         kafkaStream.start();
         return kafkaStream;
     }
