@@ -40,6 +40,7 @@ public class Pipeline {
             joinedWithAdditionalData ->
                     joinedWithAdditionalData
                             .filter((_, v) -> !BORING_DATA.equals(v.getMainField()))
+                            .peek((_, value) -> System.out.println("sending " + value))
                             .to(
                                     kafkaTopics.output(),
                                     Produced.with(Serdes.String(), SerdesUtil.JoinedDataSerde.apply(streamConfig))
