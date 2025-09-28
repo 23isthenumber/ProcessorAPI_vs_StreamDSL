@@ -80,20 +80,32 @@ services:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:9091
 
-#  kafka-ui:
-#    image: provectuslabs/kafka-ui:latest
-#    depends_on:
-#      - kafka1
-#      - kafka2
-#      - kafka3
-#      - schema-registry
-#    ports:
-#      - "8080:8080"
-#    environment:
-#      KAFKA_CLUSTERS_0_NAME: local
-#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9093,kafka3:9094
-#      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-#      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:9091
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+      - schema-registry
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9093,kafka3:9094
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:9091
+
+  kafka-rest-proxy:
+    image: confluentinc/cp-kafka-rest:7.5.0
+    depends_on:
+      - kafka1
+      - schema-registry
+    ports:
+      - "8082:8082"
+    environment:
+      KAFKA_REST_BOOTSTRAP_SERVERS: PLAINTEXT://kafka1:9092
+      KAFKA_REST_LISTENERS: http://0.0.0.0:8082
+      KAFKA_REST_SCHEMA_REGISTRY_URL: http://schema-registry:9091
 
 volumes:
   kafka_data1:
