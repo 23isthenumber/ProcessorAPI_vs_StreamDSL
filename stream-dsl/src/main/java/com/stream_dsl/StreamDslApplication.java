@@ -79,7 +79,5 @@ public class StreamDslApplication {
         consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, "group-a");
         consumerProperties.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         consumerProperties.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        consumerProperties.put(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, "1");
     }
 }
