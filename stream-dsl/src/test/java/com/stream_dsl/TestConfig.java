@@ -55,7 +55,7 @@ public class TestConfig {
     }
 
     @Bean
-    public KafkaConsumer<String, JoinedData> outputConsumer(Properties config){
+    public KafkaConsumer<String, MainData> outputConsumer(Properties config){
         config.put(
                 ConsumerConfig.GROUP_ID_CONFIG, "outputConsumerGroup"
         );

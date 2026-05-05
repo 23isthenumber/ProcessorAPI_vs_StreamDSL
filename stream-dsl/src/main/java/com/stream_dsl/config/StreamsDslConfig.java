@@ -5,6 +5,7 @@ import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.Topology;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -51,7 +52,9 @@ public class StreamsDslConfig {
 
     @Bean
     public KafkaStreams kafkaStreams(Pipeline pipeline) {
-        KafkaStreams kafkaStream = new KafkaStreams(pipeline.buildStream(), streamConfig());
+        Topology topology = pipeline.buildStream();
+        System.out.println(topology.describe());
+        KafkaStreams kafkaStream = new KafkaStreams(topology, streamConfig());
         kafkaStream.start();
         return kafkaStream;
     }

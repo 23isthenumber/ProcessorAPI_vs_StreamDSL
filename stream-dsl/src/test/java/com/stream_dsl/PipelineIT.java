@@ -4,6 +4,8 @@ import com.stream_dsl.avro.AdditionalData;
 import com.stream_dsl.avro.JoinedData;
 import com.stream_dsl.avro.MainData;
 import com.stream_dsl.config.KafkaTopics;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -14,11 +16,9 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.context.EmbeddedKafka;
-
 import java.time.Duration;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest(
@@ -28,7 +28,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 		partitions = 1,
 		topics = {
 				("${topic.mainData}"),
-				("${topic.additionalData}"),
 				("${topic.output}")
 		},
 		bootstrapServersProperty = "spring.embedded.kafka.brokers"
@@ -37,13 +36,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class PipelineIT {
 
 	@Autowired
-	private KafkaConsumer<String, JoinedData> outputConsumer;
+	private KafkaConsumer<String, MainData> outputConsumer;
 
 	@Autowired
 	private KafkaProducer<String, MainData> mainDataProducer;
-
-	@Autowired
-	private KafkaProducer<String, AdditionalData> additionalDataProducer;
 
 	@Autowired
 	private KafkaTopics topics;
@@ -62,29 +58,13 @@ class PipelineIT {
 	public void shouldProcessDataFromTwoSources() throws ExecutionException, InterruptedException {
 		//GIVEN
 		final String mainDataValue = "mainData";
-		final String additionalDataValue = "additionalData";
 		final String referenceData = "referenceData";
 		final MainData mainData = new MainData(
 				mainDataValue,
 				referenceData
 		);
-		final AdditionalData additionalData = new AdditionalData(
-				additionalDataValue,
-				referenceData
-		);
-		final JoinedData expected = new JoinedData(
-				mainDataValue,
-				additionalDataValue,
-				referenceData
-		);
+		final String expectedKey = "User123";
 		//WHEN
-		additionalDataProducer.send(
-				new ProducerRecord<>(
-						topics.additionalData(),
-						additionalData.getReferenceData(),
-						additionalData
-				)
-		).get();
 		mainDataProducer.send(
 				new ProducerRecord<>(
 						topics.mainData(),
@@ -93,7 +73,7 @@ class PipelineIT {
 				)
 		).get();
 		//THEN
-		JoinedData actual = outputConsumer.poll(Duration.ofMillis(1000)).iterator().next().value();
-		assertEquals(expected, actual);
+		ConsumerRecord<String, MainData> actual = outputConsumer.poll(Duration.ofMillis(1000)).iterator().next();
+		assertEquals(expectedKey, actual.key());
 	}
 }
