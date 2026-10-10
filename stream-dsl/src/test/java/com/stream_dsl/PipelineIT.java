@@ -152,26 +152,35 @@ class PipelineIT {
 	}
 
 	private void sendMainDataToTopic(String topic, String key, MainData value) throws InterruptedException, ExecutionException {
-		mainDataProducer.beginTransaction();
-		mainDataProducer.send(
-				new ProducerRecord<>(
-						topic,
-						key,
-						value
-				)
-		).get();
-		mainDataProducer.commitTransaction();
+        try {
+            mainDataProducer.beginTransaction();
+            mainDataProducer.send(
+                    new ProducerRecord<>(
+                            topic,
+                            key,
+                            value
+                    )
+            ).get();
+            mainDataProducer.commitTransaction();
+        }
+        catch (Exception e){
+            mainDataProducer.abortTransaction();
+        }
 	}
 
 	private void sendAdditionalDataToTopic(String topic, String key, AdditionalData value) throws InterruptedException, ExecutionException {
-		additionalDataProducer.beginTransaction();
-		additionalDataProducer.send(
-				new ProducerRecord<>(
-						topic,
-						key,
-						value
-				)
-		).get();
-		additionalDataProducer.commitTransaction();
-	}
+        try {
+            additionalDataProducer.beginTransaction();
+            additionalDataProducer.send(
+                    new ProducerRecord<>(
+                            topic,
+                            key,
+                            value
+                    )
+            ).get();
+            additionalDataProducer.commitTransaction();
+        } catch (Exception e) {
+            mainDataProducer.abortTransaction();
+        }
+    }
 }
