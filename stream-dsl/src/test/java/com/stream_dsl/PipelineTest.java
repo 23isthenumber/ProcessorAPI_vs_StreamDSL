@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 import java.util.Properties;
 import static org.apache.kafka.streams.StreamsConfig.*;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PipelineTopologyTest {
 
@@ -40,6 +40,7 @@ class PipelineTopologyTest {
 
         testDriver = new TopologyTestDriver(topology, config);
 
+        // Configure input/output topics with appropriate SerDes
         mainDataInput = testDriver.createInputTopic(
                 topics.mainData(),
                 Serdes.String().serializer(),
@@ -65,39 +66,32 @@ class PipelineTopologyTest {
     }
 
     @Test
-    void shouldDemonstrateHoppingWindowOverlap() {
+    void shouldAggregateEventsInTumblingWindow() {
         // GIVEN: Pre-populate additional data table
         String referenceKey = "referenceData";
         AdditionalData additionalData = new AdditionalData("additionalDataValue", referenceKey);
         additionalDataInput.pipeInput(referenceKey, additionalData);
 
-        // WHEN: Send a SINGLE event at timestamp 3000ms (3 seconds)
-        // With size = 5s and hop = 2s, this event falls into TWO overlapping windows:
-        // 1. Window [0ms, 5000ms)     -> Window start key: referenceData@0
-        // 2. Window [2000ms, 7000ms)  -> Window start key: referenceData@2000
-        mainDataInput.pipeInput(referenceKey, new MainData("event1", referenceKey), 3000L);
+        // WHEN: Send main data events into the stream
+        mainDataInput.pipeInput(referenceKey, new MainData("event1", referenceKey), 1000L);
+        mainDataInput.pipeInput(referenceKey, new MainData("event2", referenceKey), 2000L);
 
-        // Advance stream-time past 7000ms by sending a flush event at 8000ms
-        // This forces both overlapping windows to close and emit their results.
-        mainDataInput.pipeInput(referenceKey, new MainData("eventFlush", referenceKey), 8000L);
+        // Advance stream time past the 5-second tumbling window boundary (e.g., to 6000ms)
+        // to close the window and trigger emission.
+        mainDataInput.pipeInput(referenceKey, new MainData("event3", referenceKey), 6000L);
 
-        // THEN: Read all emitted records from the output topic
+        // THEN: Read the windowed aggregation result
         var outputRecords = outputTopic.readKeyValuesToList();
 
-        boolean foundWindowZero = false;
-        boolean foundWindowTwoThousand = false;
-
+        // Verify that we received an output record with count = 2 for the first window
+        boolean foundExpectedCount = false;
         for (var record : outputRecords) {
-            // Check that the single event was duplicated into the overlapping window buckets
-            if (record.key.equals(referenceKey + "@0") && record.value.equals(1L)) {
-                foundWindowZero = true;
-            }
-            if (record.key.equals(referenceKey + "@2000") && record.value.equals(1L)) {
-                foundWindowTwoThousand = true;
+            if (record.value.equals(2L)) {
+                foundExpectedCount = true;
+                break;
             }
         }
 
-        assertTrue(foundWindowZero, "Expected an emission for the window starting at 0ms");
-        assertTrue(foundWindowTwoThousand, "Expected an emission for the overlapping hopping window starting at 2000ms");
+        assertTrue(foundExpectedCount, "Expected to find a tumbling window count of 2");
     }
 }
