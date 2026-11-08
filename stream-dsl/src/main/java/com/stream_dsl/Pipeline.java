@@ -29,7 +29,7 @@ public class Pipeline {
     }
 
     public Topology buildStream() {
-        // Pipeline connecting: Source -> Join -> Sliding Window Count -> Output
+        // Pipeline connecting: Source -> Join -> Hopping Window Count -> Output
         sendWindowedCountToOutput.accept(
                 joinMainWithAdditionalData.apply(
                         mapMainDoJoinedModel.apply(getMainDataStream.get()), getAdditionalDataTable.get()
@@ -42,11 +42,14 @@ public class Pipeline {
             joinedWithAdditionalData ->
                     joinedWithAdditionalData
                             .groupByKey(Grouped.with(Serdes.String(), SerdesUtil.JoinedDataSerde.apply(streamConfig)))
-                            // Sliding Window with a time difference/size of 5 seconds
-                            .windowedBy(SlidingWindows.ofTimeDifferenceWithNoGrace(Duration.ofSeconds(5)))
+                            // Hopping Window: Size = 5 seconds, Advance (Hop) = 2 seconds
+                            .windowedBy(
+                                    TimeWindows.ofSizeWithNoGrace(Duration.ofSeconds(5))
+                                            .advanceBy(Duration.ofSeconds(2))
+                            )
                             .count(Materialized.with(Serdes.String(), Serdes.Long()))
                             .toStream()
-                            // Map Windowed<String> key to a readable string format for the output topic
+                            // Map Windowed<String> key to a readable string format showing window start time
                             .map((windowedKey, count) ->
                                     new KeyValue<>(windowedKey.key() + "@" + windowedKey.window().start(), count)
                             )
