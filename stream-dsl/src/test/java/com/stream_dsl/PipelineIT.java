@@ -77,21 +77,27 @@ class PipelineIT {
 				additionalDataValue,
 				referenceData
 		);
+        final long now = System.currentTimeMillis();
 		//WHEN
-		additionalDataProducer.send(
-				new ProducerRecord<>(
-						topics.additionalData(),
-						additionalData.getReferenceData(),
-						additionalData
-				)
-		).get();
-		mainDataProducer.send(
-				new ProducerRecord<>(
-						topics.mainData(),
-						mainData.getReferenceData(),
-						mainData
-				)
-		).get();
+        additionalDataProducer.send(
+                new ProducerRecord<>(
+                        topics.additionalData(),
+                        null,
+                        now,
+                        additionalData.getReferenceData(),
+                        additionalData
+                )
+        ).get();
+
+        mainDataProducer.send(
+                new ProducerRecord<>(
+                        topics.mainData(),
+                        null,
+                        now + 1000,
+                        mainData.getReferenceData(),
+                        mainData
+                )
+        ).get();
 		//THEN
 		JoinedData actual = outputConsumer.poll(Duration.ofMillis(1000)).iterator().next().value();
 		assertEquals(expected, actual);
