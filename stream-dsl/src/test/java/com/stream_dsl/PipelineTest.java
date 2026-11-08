@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Properties;
 import static org.apache.kafka.streams.StreamsConfig.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PipelineTopologyTest {
 
@@ -65,27 +66,30 @@ class PipelineTopologyTest {
     }
 
     @Test
-    void shouldDemonstrateSessionWindowInactivityGap() {
+    void shouldDemonstrateSlidingWindowRollingExpiration() {
         // GIVEN: Pre-populate additional data table
         String referenceKey = "referenceData";
         AdditionalData additionalData = new AdditionalData("additionalDataValue", referenceKey);
         additionalDataInput.pipeInput(referenceKey, additionalData);
 
-        // WHEN: Send events with a 5-second inactivity gap configuration
-        // 1. Event 1 at 1000ms (Starts Session #1)
+        // WHEN & THEN: Step-by-step sliding window evolution (5-second max time difference)
+
+        // 1. Send Event 1 at 1000ms
+        // Window opens around 1000ms. Count = 1
         mainDataInput.pipeInput(referenceKey, new MainData("event1", referenceKey), 1000L);
 
-        // 2. Event 2 at 3000ms (Within 5s gap, merges into Session #1)
+        // 2. Send Event 2 at 3000ms (2s later, within the 5s window threshold of Event 1)
+        // Both event1 and event2 are in the window. Count = 2
         mainDataInput.pipeInput(referenceKey, new MainData("event2", referenceKey), 3000L);
 
-        // 3. Event 3 at 10000ms (7s after Event 2, exceeding the 5s inactivity gap!)
-        // This closes Session #1 (with count = 2) and starts a brand new Session #2.
-        mainDataInput.pipeInput(referenceKey, new MainData("event3", referenceKey), 10000L);
+        // 3. Send Event 3 at 7000ms (4s after Event 2, but 6s after Event 1)
+        // Event 1 is now outside the 5s sliding threshold and expires!
+        // Only Event 2 and Event 3 remain in the window. Count = 2 (instead of 3)
+        mainDataInput.pipeInput(referenceKey, new MainData("event3", referenceKey), 7000L);
 
-        // THEN: Read output records
         var outputRecords = outputTopic.readKeyValuesToList();
 
-        // Verify that session window results were successfully emitted
+        // Verify that the sliding window successfully recorded the accumulation and rolling expiration
         assertEquals(?, outputRecords.size());
     }
 }
