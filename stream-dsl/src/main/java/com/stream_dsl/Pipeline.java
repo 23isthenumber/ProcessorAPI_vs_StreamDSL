@@ -5,11 +5,9 @@ import com.stream_dsl.avro.JoinedData;
 import com.stream_dsl.avro.MainData;
 import com.stream_dsl.config.KafkaTopics;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
-import java.time.Duration;
 import java.util.Properties;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -29,8 +27,7 @@ public class Pipeline {
     }
 
     public Topology buildStream() {
-        // Pipeline connecting: Source -> Join -> Tumbling Window Count -> Output
-        sendWindowedCountToOutput.accept(
+        sendInterestingDataToOutput.accept(
                 joinMainWithAdditionalData.apply(
                         mapMainDoJoinedModel.apply(getMainDataStream.get()), getAdditionalDataTable.get()
                 )
@@ -38,21 +35,13 @@ public class Pipeline {
         return streamsBuilder.build();
     }
 
-    private final Consumer<KStream<String, JoinedData>> sendWindowedCountToOutput =
+    private final Consumer<KStream<String, JoinedData>> sendInterestingDataToOutput =
             joinedWithAdditionalData ->
                     joinedWithAdditionalData
-                            .groupByKey(Grouped.with(Serdes.String(), SerdesUtil.JoinedDataSerde.apply(streamConfig)))
-                            // Tumbling Window of 5 seconds (fixed-size, non-overlapping)
-                            .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofSeconds(5)))
-                            .count(Materialized.with(Serdes.String(), Serdes.Long()))
-                            .toStream()
-                            // Map Windowed<String> key to a readable string format for the output topic
-                            .map((windowedKey, count) ->
-                                    new KeyValue<>(windowedKey.key() + "@" + windowedKey.window().start(), count)
-                            )
+                            .filter((_, v) -> !"boring_data".equals(v.getMainField()))
                             .to(
                                     kafkaTopics.output(),
-                                    Produced.with(Serdes.String(), Serdes.Long())
+                                    Produced.with(Serdes.String(), SerdesUtil.JoinedDataSerde.apply(streamConfig))
                             );
 
     private final BiFunction<KStream<String, JoinedData>, KTable<String, AdditionalData>, KStream<String, JoinedData>>
@@ -85,12 +74,12 @@ public class Pipeline {
                     .toTable(Materialized.with(Serdes.String(), SerdesUtil.AdditionalDataSerde.apply(streamConfig)));
 
     private final Supplier<KStream<String, MainData>> getMainDataStream = () ->
-            streamsBuilder
-                    .stream(
-                            kafkaTopics.mainData(),
-                            Consumed.with(Serdes.String(), SerdesUtil.MainDataSerde.apply(streamConfig))
-                    )
-                    .selectKey((_, v) -> v.getReferenceData());
+         streamsBuilder
+                .stream(
+                        kafkaTopics.mainData(),
+                        Consumed.with(Serdes.String(), SerdesUtil.MainDataSerde.apply(streamConfig))
+                )
+                .selectKey((_, v) -> v.getReferenceData());
 
     private Joined<String, JoinedData, AdditionalData> configureSerde() {
         return Joined.with(
@@ -103,9 +92,9 @@ public class Pipeline {
     private ValueJoiner<JoinedData, AdditionalData, JoinedData> getJoinedDataAdditionalDataJoinedDataValueJoiner() {
         return (joinedData, additionalData) ->
                 new JoinedData(
-                        joinedData.getMainField(),
-                        additionalData != null ? additionalData.getAdditionalField() : "",
-                        joinedData.getReferenceData()
-                );
+                joinedData.getMainField(),
+                additionalData != null ? additionalData.getAdditionalField() : "",
+                joinedData.getReferenceData()
+        );
     }
 }
