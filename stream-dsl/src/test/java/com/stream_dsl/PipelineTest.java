@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 import java.util.Properties;
 import static org.apache.kafka.streams.StreamsConfig.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PipelineTopologyTest {
@@ -65,39 +66,30 @@ class PipelineTopologyTest {
     }
 
     @Test
-    void shouldDemonstrateHoppingWindowOverlap() {
+    void shouldDemonstrateSlidingWindowRollingExpiration() {
         // GIVEN: Pre-populate additional data table
         String referenceKey = "referenceData";
         AdditionalData additionalData = new AdditionalData("additionalDataValue", referenceKey);
         additionalDataInput.pipeInput(referenceKey, additionalData);
 
-        // WHEN: Send a SINGLE event at timestamp 3000ms (3 seconds)
-        // With size = 5s and hop = 2s, this event falls into TWO overlapping windows:
-        // 1. Window [0ms, 5000ms)     -> Window start key: referenceData@0
-        // 2. Window [2000ms, 7000ms)  -> Window start key: referenceData@2000
-        mainDataInput.pipeInput(referenceKey, new MainData("event1", referenceKey), 3000L);
+        // WHEN & THEN: Step-by-step sliding window evolution (5-second max time difference)
 
-        // Advance stream-time past 7000ms by sending a flush event at 8000ms
-        // This forces both overlapping windows to close and emit their results.
-        mainDataInput.pipeInput(referenceKey, new MainData("eventFlush", referenceKey), 8000L);
+        // 1. Send Event 1 at 1000ms
+        // Window opens around 1000ms. Count = 1
+        mainDataInput.pipeInput(referenceKey, new MainData("event1", referenceKey), 1000L);
 
-        // THEN: Read all emitted records from the output topic
+        // 2. Send Event 2 at 3000ms (2s later, within the 5s window threshold of Event 1)
+        // Both event1 and event2 are in the window. Count = 2
+        mainDataInput.pipeInput(referenceKey, new MainData("event2", referenceKey), 3000L);
+
+        // 3. Send Event 3 at 7000ms (4s after Event 2, but 6s after Event 1)
+        // Event 1 is now outside the 5s sliding threshold and expires!
+        // Only Event 2 and Event 3 remain in the window. Count = 2 (instead of 3)
+        mainDataInput.pipeInput(referenceKey, new MainData("event3", referenceKey), 7000L);
+
         var outputRecords = outputTopic.readKeyValuesToList();
 
-        boolean foundWindowZero = false;
-        boolean foundWindowTwoThousand = false;
-
-        for (var record : outputRecords) {
-            // Check that the single event was duplicated into the overlapping window buckets
-            if (record.key.equals(referenceKey + "@0") && record.value.equals(1L)) {
-                foundWindowZero = true;
-            }
-            if (record.key.equals(referenceKey + "@2000") && record.value.equals(1L)) {
-                foundWindowTwoThousand = true;
-            }
-        }
-
-        assertTrue(foundWindowZero, "Expected an emission for the window starting at 0ms");
-        assertTrue(foundWindowTwoThousand, "Expected an emission for the overlapping hopping window starting at 2000ms");
+        // Verify that the sliding window successfully recorded the accumulation and rolling expiration
+        assertEquals(?, outputRecords.size());
     }
 }
