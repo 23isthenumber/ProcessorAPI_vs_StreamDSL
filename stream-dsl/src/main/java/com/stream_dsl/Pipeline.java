@@ -45,6 +45,9 @@ public class Pipeline {
                             // Sliding Window with a time difference/size of 5 seconds
                             .windowedBy(SlidingWindows.ofTimeDifferenceWithNoGrace(Duration.ofSeconds(5)))
                             .count(Materialized.with(Serdes.String(), Serdes.Long()))
+                            .suppress(
+                                    Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded().shutDownWhenFull())
+                            )
                             .toStream()
                             // Map Windowed<String> key to a readable string format for the output topic
                             .map((windowedKey, count) ->

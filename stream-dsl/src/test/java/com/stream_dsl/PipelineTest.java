@@ -90,6 +90,6 @@ class PipelineTopologyTest {
         var outputRecords = outputTopic.readKeyValuesToList();
 
         // Verify that the sliding window successfully recorded the accumulation and rolling expiration
-        assertEquals(?, outputRecords.size());
+        assertEquals(5, outputRecords.size());
     }
 }
