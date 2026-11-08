@@ -8,7 +8,6 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
-import java.time.Duration;
 import java.util.Properties;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -30,7 +29,7 @@ public class Pipeline {
     public Topology buildStream() {
         sendInterestingDataToOutput.accept(
                 joinMainWithAdditionalData.apply(
-                        mapMainDoJoinedModel.apply(getMainDataStream.get()), getAdditionalDataStream.get()
+                        mapMainDoJoinedModel.apply(getMainDataStream.get()), getAdditionalDataTable.get()
                 )
         );
         return streamsBuilder.build();
@@ -45,15 +44,13 @@ public class Pipeline {
                                     Produced.with(Serdes.String(), SerdesUtil.JoinedDataSerde.apply(streamConfig))
                             );
 
-    private final BiFunction<KStream<String, JoinedData>, KStream<String, AdditionalData>, KStream<String, JoinedData>>
-            joinMainWithAdditionalData = (mainDataMapToJoinedData, additionalDataStream) ->
+    private final BiFunction<KStream<String, JoinedData>, KTable<String, AdditionalData>, KStream<String, JoinedData>>
+            joinMainWithAdditionalData = (mainDataMapToJoinedData, additionalDataTable) ->
             mainDataMapToJoinedData
                     .leftJoin(
-                            additionalDataStream,
+                            additionalDataTable,
                             getJoinedDataAdditionalDataJoinedDataValueJoiner(),
-                            // FIX: Use JoinWindows instead of SlidingWindows for stream-stream joins
-                            JoinWindows.ofTimeDifferenceWithNoGrace(Duration.ofSeconds(5)),
-                            configureStreamJoined()
+                            configureSerde()
                     );
 
     private final Function<KStream<String, MainData>, KStream<String, JoinedData>> mapMainDoJoinedModel =
@@ -67,24 +64,25 @@ public class Pipeline {
                                     )
                             );
 
-    private final Supplier<KStream<String, AdditionalData>> getAdditionalDataStream = () ->
+    private final Supplier<KTable<String, AdditionalData>> getAdditionalDataTable = () ->
             streamsBuilder
                     .stream(
                             kafkaTopics.additionalData(),
                             Consumed.with(Serdes.String(), SerdesUtil.AdditionalDataSerde.apply(streamConfig))
                     )
-                    .selectKey((_, v) -> v.getReferenceData());
+                    .selectKey((_, v) -> v.getReferenceData())
+                    .toTable(Materialized.with(Serdes.String(), SerdesUtil.AdditionalDataSerde.apply(streamConfig)));
 
     private final Supplier<KStream<String, MainData>> getMainDataStream = () ->
-            streamsBuilder
-                    .stream(
-                            kafkaTopics.mainData(),
-                            Consumed.with(Serdes.String(), SerdesUtil.MainDataSerde.apply(streamConfig))
-                    )
-                    .selectKey((_, v) -> v.getReferenceData());
+         streamsBuilder
+                .stream(
+                        kafkaTopics.mainData(),
+                        Consumed.with(Serdes.String(), SerdesUtil.MainDataSerde.apply(streamConfig))
+                )
+                .selectKey((_, v) -> v.getReferenceData());
 
-    private StreamJoined<String, JoinedData, AdditionalData> configureStreamJoined() {
-        return StreamJoined.with(
+    private Joined<String, JoinedData, AdditionalData> configureSerde() {
+        return Joined.with(
                 Serdes.String(),
                 SerdesUtil.JoinedDataSerde.apply(streamConfig),
                 SerdesUtil.AdditionalDataSerde.apply(streamConfig)
@@ -94,9 +92,9 @@ public class Pipeline {
     private ValueJoiner<JoinedData, AdditionalData, JoinedData> getJoinedDataAdditionalDataJoinedDataValueJoiner() {
         return (joinedData, additionalData) ->
                 new JoinedData(
-                        joinedData.getMainField(),
-                        additionalData != null ? additionalData.getAdditionalField() : "",
-                        joinedData.getReferenceData()
-                );
+                joinedData.getMainField(),
+                additionalData != null ? additionalData.getAdditionalField() : "",
+                joinedData.getReferenceData()
+        );
     }
 }
